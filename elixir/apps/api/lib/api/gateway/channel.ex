@@ -55,6 +55,25 @@ defmodule API.Gateway.Channel do
     end
   end
 
+  def handle_info({:resource_created, _resource_id}, socket) do
+    {:noreply, socket}
+  end
+
+  def handle_info({:resource_updated, _resource_id}, socket) do
+    {:noreply, socket}
+  end
+
+  def handle_info({:resource_deleted, resource_id}, socket) do
+    OpenTelemetry.Ctx.attach(socket.assigns.opentelemetry_ctx)
+    OpenTelemetry.Tracer.set_current_span(socket.assigns.opentelemetry_span_ctx)
+
+    OpenTelemetry.Tracer.with_span "gateway.resource_deleted", %{resource_id: resource_id} do
+      :ok = Resources.unsubscribe_from_resource_events(resource_id)
+      push(socket, "resource_deleted", resource_id)
+      {:noreply, socket}
+    end
+  end
+
   def handle_info(
         {:ice_candidates, client_id, candidates, {opentelemetry_ctx, opentelemetry_span_ctx}},
         socket
@@ -89,6 +108,7 @@ defmodule API.Gateway.Channel do
       } = attrs
 
       resource = Resources.fetch_resource_by_id!(resource_id)
+      :ok = Resources.subscribe_for_resource_events(resource)
 
       push(socket, "allow_access", %{
         client_id: client_id,
@@ -153,6 +173,8 @@ defmodule API.Gateway.Channel do
 
       {:ok, relays} =
         Relays.list_connected_relays_for_resource(resource, relay_hosting_type)
+
+      :ok = Resources.subscribe_for_resource_events(resource)
 
       ref = Ecto.UUID.generate()
 
