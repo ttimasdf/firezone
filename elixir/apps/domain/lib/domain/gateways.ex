@@ -1,6 +1,6 @@
 defmodule Domain.Gateways do
   use Supervisor
-  alias Domain.{Repo, Auth, Validator, Geo}
+  alias Domain.{Repo, Auth, Validator, Geo, PubSub}
   alias Domain.{Accounts, Resources}
   alias Domain.Gateways.{Authorizer, Gateway, Group, Token, Presence}
 
@@ -481,11 +481,11 @@ defmodule Domain.Gateways do
   end
 
   def subscribe_for_gateways_presence_in_account(%Accounts.Account{} = account) do
-    Phoenix.PubSub.subscribe(Domain.PubSub, "gateways:#{account.id}")
+    PubSub.subscribe("gateways:#{account.id}")
   end
 
   def subscribe_for_gateways_presence_in_group(%Group{} = group) do
-    Phoenix.PubSub.subscribe(Domain.PubSub, "gateway_groups:#{group.id}")
+    PubSub.subscribe("gateway_groups:#{group.id}")
   end
 
   defp fetch_config! do
