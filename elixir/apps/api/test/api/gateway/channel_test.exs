@@ -147,6 +147,19 @@ defmodule API.Gateway.ChannelTest do
     end
   end
 
+  describe "handle_info/2 :reject_access" do
+    test "pushes message to the socket", %{
+      client: client,
+      resource: resource,
+      socket: socket
+    } do
+      send(socket.channel_pid, {:reject_access, client.id, resource.id})
+
+      assert_push "reject_access", payload
+      assert payload == %{client_id: client.id, resource_id: resource.id}
+    end
+  end
+
   describe "handle_info/2 :ice_candidates" do
     test "pushes ice_candidates message", %{
       client: client,
@@ -593,7 +606,7 @@ defmodule API.Gateway.ChannelTest do
       }
 
       :ok = Domain.Clients.connect_client(client)
-      Phoenix.PubSub.subscribe(Domain.PubSub, API.Client.Socket.id(client))
+      Domain.PubSub.subscribe(API.Client.Socket.id(client))
 
       push(socket, "broadcast_ice_candidates", attrs)
 

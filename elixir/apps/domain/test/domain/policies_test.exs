@@ -210,18 +210,16 @@ defmodule Domain.PoliciesTest do
                  ]}}
     end
 
-    test "returns changeset error when trying to create policy with another account actor_group",
-         %{
-           account: account,
-           subject: subject
-         } do
+    test "returns error when trying to create policy with another account actor_group", %{
+      account: account,
+      subject: subject
+    } do
       other_account = Fixtures.Accounts.create_account()
 
       resource = Fixtures.Resources.create_resource(account: account)
       other_actor_group = Fixtures.Actors.create_group(account: other_account)
 
       attrs = %{
-        account_id: account.id,
         description: "yikes",
         actor_group_id: other_actor_group.id,
         resource_id: resource.id
@@ -242,7 +240,6 @@ defmodule Domain.PoliciesTest do
       actor_group = Fixtures.Actors.create_group(account: account)
 
       attrs = %{
-        account_id: account.id,
         description: "yikes",
         actor_group_id: actor_group.id,
         resource_id: other_resource.id
@@ -253,6 +250,23 @@ defmodule Domain.PoliciesTest do
 
       assert errors_on(changeset) == %{resource: ["does not exist"]}
     end
+
+    test "creates a policy", %{
+      account: account,
+      resource: resource,
+      subject: subject
+    } do
+      actor_group = Fixtures.Actors.create_group(account: account)
+
+      attrs = %{
+        actor_group_id: actor_group.id,
+        resource_id: resource.id
+      }
+
+      assert {:ok, policy} = create_policy(attrs, subject)
+    end
+
+    test "broadcasts a message when policy is created"
   end
 
   describe "update_policy/3" do

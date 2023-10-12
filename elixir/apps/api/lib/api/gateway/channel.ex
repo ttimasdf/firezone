@@ -74,6 +74,16 @@ defmodule API.Gateway.Channel do
     end
   end
 
+  # {:allow_access, group_id, resource_id}
+  # {:reject_access, group_id, resource_id}
+
+  # {:resource_created, resource_id}
+  # {:resource_updated, resource_id}
+  # {:resource_deleted, resource_id}
+
+  # {:membership_created, actor_id, group_id}
+  # {:membership_deleted, actor_id, group_id}
+
   def handle_info(
         {:ice_candidates, client_id, candidates, {opentelemetry_ctx, opentelemetry_span_ctx}},
         socket

@@ -2,7 +2,7 @@ defmodule API.Client.Channel do
   use API, :channel
   alias API.Client.Views
   alias Domain.Instrumentation
-  alias Domain.{Clients, Resources, Gateways, Relays, Flows}
+  alias Domain.{Actors, Clients, Resources, Policies, Gateways, Relays, Flows}
   require Logger
   require OpenTelemetry.Tracer
 
@@ -50,11 +50,13 @@ defmodule API.Client.Channel do
     OpenTelemetry.Tracer.set_current_span(opentelemetry_span_ctx)
 
     OpenTelemetry.Tracer.with_span "client.after_join" do
+      {:ok, resources} = Resources.list_authorized_resources(socket.assigns.subject)
+      {:ok, actor_group_ids} = Actors.list_actor_group_ids(socket.assigns.subject.actor)
+
       :ok = Domain.PubSub.subscribe("client:#{socket.assigns.client.id}")
       :ok = Resources.subscribe_for_resource_events_in_account(socket.assigns.client.account_id)
+      :ok = Enum.each(actor_group_ids, &Policies.subscribe_for_events_for_actor_group(&1))
       :ok = Clients.connect_client(socket.assigns.client)
-
-      {:ok, resources} = Resources.list_authorized_resources(socket.assigns.subject)
 
       :ok =
         push(socket, "init", %{
@@ -159,6 +161,43 @@ defmodule API.Client.Channel do
 
     OpenTelemetry.Tracer.with_span "client.resource_deleted", attributes: %{resource_id: resource_id} do
       push(socket, "resource_deleted", resource_id)
+      {:noreply, socket}
+    end
+  end
+
+  # TODO: this is not enough, we also need to react on actor group memberships changes
+
+  # This message is received when there is a policy created
+  # allowing access to a resource by a client actor group
+  def handle_info({:allow_access, resource_id}, socket) do
+    OpenTelemetry.Ctx.attach(socket.assigns.opentelemetry_ctx)
+    OpenTelemetry.Tracer.set_current_span(socket.assigns.opentelemetry_span_ctx)
+
+    OpenTelemetry.Tracer.with_span "client.allow_access", %{resource_id: resource_id} do
+      with {:ok, resource} <-
+             Resources.fetch_and_authorize_resource_by_id(resource_id, socket.assigns.subject) do
+        push(socket, "resource_created", Views.Resource.render(resource))
+      end
+
+      {:noreply, socket}
+    end
+  end
+
+  # This message is received when the policy
+  # allowing access to a resource by a client actor group is deleted
+  def handle_info({:reject_access, resource_id}, socket) do
+    OpenTelemetry.Ctx.attach(socket.assigns.opentelemetry_ctx)
+    OpenTelemetry.Tracer.set_current_span(socket.assigns.opentelemetry_span_ctx)
+
+    OpenTelemetry.Tracer.with_span "client.reject_access", %{resource_id: resource_id} do
+      # There can be other policies allowing the access so we try to re-authorize the client first,
+      # TODO: this will not close previous flow and create a new one,
+      # which can be confusing during investigations
+      case Resources.fetch_and_authorize_resource_by_id(resource_id, socket.assigns.subject) do
+        {:ok, resource} -> push(socket, "resource_updated", Views.Resource.render(resource))
+        {:error, _reason} -> push(socket, "resource_deleted", resource_id)
+      end
+
       {:noreply, socket}
     end
   end

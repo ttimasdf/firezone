@@ -182,6 +182,18 @@ defmodule Domain.Actors do
     |> Repo.fetch!()
   end
 
+  # TODO: this should be replaced with list_groups(..., filter: %{actor_id: actor.id})
+  def list_actor_group_ids(%Actor{} = actor) do
+    actor = Repo.preload(actor, :memberships)
+
+    group_ids =
+      actor.memberships
+      |> Enum.map(& &1.group_id)
+      |> Enum.uniq()
+
+    {:ok, group_ids}
+  end
+
   def list_actors(%Auth.Subject{} = subject, opts \\ []) do
     {preload, _opts} = Keyword.pop(opts, :preload, [])
 

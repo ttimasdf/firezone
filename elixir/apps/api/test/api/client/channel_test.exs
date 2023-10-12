@@ -168,7 +168,7 @@ defmodule API.Client.ChannelTest do
     end
   end
 
-  describe "handle_info/2 :handle_info" do
+  describe "handle_info/2 :token_expired" do
     test "sends a token_expired messages and closes the socket", %{
       socket: socket
     } do
@@ -278,6 +278,38 @@ defmodule API.Client.ChannelTest do
     } do
       send(socket.channel_pid, {:resource_deleted, resource.id})
       refute_push "resource_deleted", %{}
+    end
+  end
+
+  describe "handle_info/2 :allow_access" do
+    test "pushes message to the socket", %{
+      dns_resource: resource,
+      socket: socket
+    } do
+      send(socket.channel_pid, {:allow_access, resource.id})
+
+      assert_push "resource_created", payload
+
+      assert payload == %{
+               id: resource.id,
+               type: :dns,
+               name: resource.name,
+               address: resource.address,
+               ipv4: resource.ipv4,
+               ipv6: resource.ipv6
+             }
+    end
+  end
+
+  describe "handle_info/2 :reject_access" do
+    test "pushes message to the socket", %{
+      dns_resource: resource,
+      socket: socket
+    } do
+      send(socket.channel_pid, {:reject_access, resource.id})
+
+      assert_push "resource_deleted", payload
+      assert payload == resource.id
     end
   end
 
@@ -670,7 +702,7 @@ defmodule API.Client.ChannelTest do
       client_id = client.id
 
       :ok = Domain.Gateways.connect_gateway(gateway)
-      Phoenix.PubSub.subscribe(Domain.PubSub, API.Gateway.Socket.id(gateway))
+      Domain.PubSub.subscribe(API.Gateway.Socket.id(gateway))
 
       attrs = %{
         "resource_id" => resource.id,
@@ -782,7 +814,7 @@ defmodule API.Client.ChannelTest do
       client_id = client.id
 
       :ok = Domain.Gateways.connect_gateway(gateway)
-      Phoenix.PubSub.subscribe(Domain.PubSub, API.Gateway.Socket.id(gateway))
+      Domain.PubSub.subscribe(API.Gateway.Socket.id(gateway))
 
       attrs = %{
         "resource_id" => resource.id,
@@ -849,7 +881,7 @@ defmodule API.Client.ChannelTest do
       }
 
       :ok = Domain.Gateways.connect_gateway(gateway)
-      Phoenix.PubSub.subscribe(Domain.PubSub, API.Gateway.Socket.id(gateway))
+      Domain.PubSub.subscribe(API.Gateway.Socket.id(gateway))
 
       push(socket, "broadcast_ice_candidates", attrs)
 
