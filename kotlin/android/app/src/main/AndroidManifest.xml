@@ -65,7 +65,7 @@
                      host can access. E.g. 10.0.2.2 will not work. -->
                 <data android:scheme="https" />
                 <data android:host="app.firez.one" />
-                <data android:pathPrefix="/handle_client_auth_callback" />
+                <data android:pathPrefix="/handle_client_sign_in_callback" />
             </intent-filter>
 
             <!-- Prod -->
@@ -83,7 +83,7 @@
                      host can access. E.g. 10.0.2.2 will not work. -->
                 <data android:scheme="https" />
                 <data android:host="app.firezone.dev" />
-                <data android:pathPrefix="/handle_client_auth_callback" />
+                <data android:pathPrefix="/handle_client_sign_in_callback" />
             </intent-filter>
         </activity>
 
