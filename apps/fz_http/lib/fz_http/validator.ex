@@ -60,7 +60,7 @@ defmodule FzHttp.Validator do
          false <- has_errors?(changeset, field) do
       uri = URI.parse(value)
       scheme = uri.scheme || "https"
-      port = URI.default_port(scheme)
+      port = uri.port
       path = maybe_add_trailing_slash(uri.path || "/")
       uri = %{uri | scheme: scheme, port: port, path: path}
       uri_string = URI.to_string(uri)
